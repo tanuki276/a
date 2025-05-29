@@ -125,7 +125,6 @@ function stopGame() {
 
 function resetGame() {
   stopGame();
-  initGame();
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = "white";
   ctx.fillText("Press ▶️ Start", 130, 150);
