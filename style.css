@@ -1,6 +1,6 @@
 body {
     font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif;
-    background-color: #f0f0f0; /* 2ch風の背景色 */
+    background-color: #f0f0f0; /* 背景色 */
     margin: 0;
     padding: 20px;
     display: flex;
@@ -15,7 +15,7 @@ body {
     border-radius: 8px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     width: 100%;
-    max-width: 700px; /* 2chのような少し狭めの幅 */
+    max-width: 700px; /* 少し狭めの幅 */
 }
 
 h1 {
