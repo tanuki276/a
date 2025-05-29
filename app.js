@@ -1,7 +1,24 @@
 // Firebase SDKの読み込み
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, collection, addDoc, getDocs, setDoc, doc, getDoc, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import {
+  getAuth,
+  signInWithPopup,
+  GoogleAuthProvider,
+  signOut,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  getDocs,
+  setDoc,
+  doc,
+  getDoc,
+  serverTimestamp,
+  query,
+  orderBy
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 // Firebase設定
 const firebaseConfig = {
@@ -27,6 +44,11 @@ const threadForm = document.getElementById("threadForm");
 const threadTitleInput = document.getElementById("threadTitle");
 const threadList = document.getElementById("threadList");
 
+// ステータス表示用関数
+function showStatus(msg) {
+  statusDiv.innerText = msg;
+}
+
 // ニックネーム取得
 async function getNickname(uid) {
   const docRef = doc(db, "users", uid);
@@ -47,26 +69,30 @@ async function getNickname(uid) {
 // スレッドの取得
 async function loadThreads() {
   threadList.innerHTML = "";
-  const q = query(collection(db, "threads"), orderBy("createdAt", "desc"));
-  const querySnapshot = await getDocs(q);
-  querySnapshot.forEach((doc) => {
-    const data = doc.data();
-    const li = document.createElement("li");
-    li.textContent = `[${data.author}] ${data.title}`;
-    threadList.appendChild(li);
-  });
+  try {
+    const q = query(collection(db, "threads"), orderBy("createdAt", "desc"));
+    const querySnapshot = await getDocs(q);
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      const li = document.createElement("li");
+      li.textContent = `[${data.author}] ${data.title}`;
+      threadList.appendChild(li);
+    });
+  } catch (err) {
+    showStatus("スレッド読み込み失敗: " + err.message);
+  }
 }
 
 // ログイン状態の監視
 onAuthStateChanged(auth, async (user) => {
   if (user) {
     const nickname = await getNickname(user.uid);
-    statusDiv.textContent = `ログイン中: ${nickname}`;
+    showStatus(`ログイン中: ${nickname}`);
     threadForm.style.display = "flex";
     loginBtn.style.display = "none";
     loadThreads();
   } else {
-    statusDiv.textContent = "ログインしてください";
+    showStatus("ログインしてください");
     threadForm.style.display = "none";
     loginBtn.style.display = "block";
     threadList.innerHTML = "";
@@ -78,7 +104,7 @@ loginBtn.addEventListener("click", async () => {
   try {
     await signInWithPopup(auth, provider);
   } catch (error) {
-    alert("ログイン失敗: " + error.message);
+    showStatus("ログイン失敗: " + error.message);
   }
 });
 
@@ -91,18 +117,28 @@ statusDiv.addEventListener("click", () => {
 threadForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const user = auth.currentUser;
-  if (!user) return;
+  if (!user) {
+    showStatus("ログインしていません");
+    return;
+  }
 
   const nickname = await getNickname(user.uid);
   const title = threadTitleInput.value.trim();
-  if (title === "") return;
+  if (title === "") {
+    showStatus("スレッドタイトルを入力してください");
+    return;
+  }
 
-  await addDoc(collection(db, "threads"), {
-    title,
-    author: nickname,
-    createdAt: serverTimestamp(),
-  });
-
-  threadTitleInput.value = "";
-  loadThreads();
+  try {
+    await addDoc(collection(db, "threads"), {
+      title,
+      author: nickname,
+      createdAt: serverTimestamp(),
+    });
+    threadTitleInput.value = "";
+    showStatus("スレッドを作成しました");
+    loadThreads();
+  } catch (err) {
+    showStatus("スレッド作成失敗: " + err.message);
+  }
 });
