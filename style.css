@@ -1,50 +1,267 @@
 body {
-  font-family: Arial, sans-serif;
-  max-width: 600px;
-  margin: 2rem auto;
-  padding: 1rem;
-  background: #f7f7f7;
-  color: #222;
+    font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif;
+    background-color: #f0f0f0; /* 2ch風の背景色 */
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
 }
-h1, h2, h3 {
-  color: #333;
+
+.container {
+    background-color: #ffffff;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 700px; /* 2chのような少し狭めの幅 */
 }
-input, textarea, button {
-  font-size: 1rem;
-  padding: 0.5rem;
-  margin: 0.3rem 0;
-  width: 100%;
-  box-sizing: border-box;
+
+h1 {
+    color: #333;
+    text-align: center;
+    margin-bottom: 30px;
+    font-size: 1.8rem;
+    border-bottom: 2px solid #ccc;
+    padding-bottom: 10px;
 }
-textarea {
-  height: 80px;
-  resize: vertical;
+
+h2 {
+    color: #555;
+    margin-top: 25px;
+    margin-bottom: 15px;
+    border-left: 5px solid #337ab7;
+    padding-left: 10px;
 }
-button {
-  cursor: pointer;
-  background-color: #007bff;
-  border: none;
-  color: white;
-  border-radius: 4px;
-  transition: background-color 0.3s;
+
+.post-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 30px;
+    padding: 20px;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    background-color: #f9f9f9;
 }
-button:hover {
-  background-color: #0056b3;
+
+.post-form input[type="text"],
+.post-form textarea {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 0.95rem;
+    width: 100%;
+    box-sizing: border-box;
 }
-ul {
-  list-style-type: none;
-  padding-left: 0;
+
+.post-form textarea {
+    resize: vertical;
+    min-height: 80px;
+    max-height: 200px;
 }
-li {
-  padding: 0.3rem;
-  border-bottom: 1px solid #ddd;
-  word-break: break-word;
+
+.post-form button {
+    background-color: #337ab7;
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.3s ease;
+    align-self: flex-end;
 }
-#threadList li:hover {
-  background-color: #e3e3e3;
-  cursor: pointer;
+
+.post-form button:hover:not(:disabled) {
+    background-color: #286090;
 }
-#currentThreadTitle {
-  font-weight: bold;
-  margin-bottom: 0.5rem;
+
+.post-form button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
+/* スロットルメッセージ */
+.throttle-message {
+    color: #d9534f; /* 赤色 */
+    font-size: 0.85rem;
+    margin-top: 5px;
+    text-align: right;
+}
+
+/* スレッドリスト */
+.thread-list {
+    list-style: decimal; /* 番号リスト */
+    padding-left: 25px;
+    margin: 0;
+}
+
+.thread-item {
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 15px;
+    margin-bottom: 15px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    position: relative;
+    padding-left: 20px; /* 番号スペース */
+}
+
+/* カスタムリスト番号 */
+.thread-list li::marker {
+    font-weight: bold;
+    color: #008800; /* 2ch風の番号色 */
+    font-size: 1rem;
+}
+
+.thread-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 0.85rem;
+    color: #666;
+}
+
+.thread-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.thread-user {
+    font-weight: bold;
+    color: #337ab7;
+}
+
+.thread-time {
+    color: #888;
+}
+
+.thread-content {
+    line-height: 1.6;
+    color: #333;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-size: 0.95rem;
+    margin-bottom: 15px;
+}
+
+/* コメントセクション */
+.comments-section {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px dashed #eee;
+}
+
+.comments-list {
+    margin-top: 10px;
+    margin-bottom: 20px;
+    padding-left: 0;
+    list-style: none;
+}
+
+.comment-item {
+    background-color: #f0f2f5;
+    padding: 8px 12px;
+    border-radius: 4px;
+    margin-bottom: 8px;
+    font-size: 0.85rem;
+    color: #555;
+    line-height: 1.5;
+}
+
+.comment-item strong {
+    color: #007bff;
+}
+
+.comment-form {
+    display: flex;
+    gap: 8px;
+    margin-top: 15px;
+}
+
+.comment-form input[type="text"] {
+    flex-grow: 1;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.comment-form button {
+    background-color: #28a745;
+    color: white;
+    padding: 8px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background-color 0.3s ease;
+}
+
+.comment-form button:hover:not(:disabled) {
+    background-color: #218838;
+}
+
+.comment-form button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
+.comment-throttle-message {
+    color: #d9534f;
+    font-size: 0.75rem;
+    margin-top: 5px;
+    text-align: right;
+}
+
+/* 削除ボタン */
+.delete-post-button, .delete-comment-button {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: background-color 0.3s ease;
+    margin-left: 10px; /* 位置調整 */
+}
+
+.delete-post-button:hover, .delete-comment-button:hover {
+    background-color: #c82333;
+}
+
+.delete-key-input {
+    margin-top: 10px;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    width: 150px;
+    display: block; /* 削除ボタンの上に配置 */
+}
+
+.delete-section {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.delete-confirm-button {
+    background-color: #ffc107;
+    color: #333;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background-color 0.3s ease;
+}
+.delete-confirm-button:hover {
+    background-color: #e0a800;
 }
