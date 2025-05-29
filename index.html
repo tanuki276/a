@@ -4,12 +4,6 @@
   <meta charset="UTF-8">
   <title>Kouzo Invader</title>
   <style>
-    canvas {
-      background: black;
-      display: block;
-      margin: auto;
-      border: 2px solid white;
-    }
     body {
       margin: 0;
       background: #111;
@@ -17,12 +11,44 @@
       font-family: monospace;
       text-align: center;
     }
+    h1 {
+      font-size: 2em;
+    }
+    #score {
+      font-size: 1.5em;
+      color: lime;
+    }
+    canvas {
+      background: black;
+      display: block;
+      margin: 20px auto;
+      border: 4px solid white;
+    }
+    button {
+      font-size: 1.2em;
+      margin: 10px;
+      padding: 10px 20px;
+      border-radius: 10px;
+      border: none;
+      background: #333;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #555;
+    }
   </style>
 </head>
 <body>
   <h1>Kouzo Invader</h1>
   <p>Score: <span id="score">0</span></p>
   <canvas id="game" width="400" height="300"></canvas>
+
+  <div>
+    <button onclick="startGame()">▶️ Start</button>
+    <button onclick="stopGame()">⛔ Stop</button>
+    <button onclick="resetGame()">🔄 Reset</button>
+  </div>
 
   <audio id="shoot-sound" src="https://freesound.org/data/previews/66/66717_931655-lq.mp3"></audio>
   <audio id="hit-sound" src="https://freesound.org/data/previews/174/174027_3242490-lq.mp3"></audio>
