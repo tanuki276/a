@@ -1,70 +1,108 @@
-const nicknameForm = document.getElementById("nicknameForm");
-const nicknameInput = document.getElementById("nicknameInput");
-const saveNicknameBtn = document.getElementById("saveNicknameBtn");
+// Firebase SDKの読み込み
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, setDoc, doc, getDoc, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-let currentNickname = null;
+// Firebase設定
+const firebaseConfig = {
+  apiKey: "AIzaSyBIY3DFsKw2L0LB6MBLR_0f1NXOppCDta8",
+  authDomain: "anitb-63dcb.firebaseapp.com",
+  projectId: "anitb-63dcb",
+  storageBucket: "anitb-63dcb.appspot.com",
+  messagingSenderId: "196706725748",
+  appId: "1:196706725748:web:85c67f85aec5e0fea9c621",
+  measurementId: "G-13Z9ZVCTCJ"
+};
 
-// ログイン状態監視の中に追加
+// Firebase初期化
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const provider = new GoogleAuthProvider();
+
+// DOM要素
+const loginBtn = document.getElementById("loginBtn");
+const statusDiv = document.getElementById("status");
+const threadForm = document.getElementById("threadForm");
+const threadTitleInput = document.getElementById("threadTitle");
+const threadList = document.getElementById("threadList");
+
+// ニックネーム取得
+async function getNickname(uid) {
+  const docRef = doc(db, "users", uid);
+  const docSnap = await getDoc(docRef);
+  if (docSnap.exists()) {
+    return docSnap.data().nickname;
+  } else {
+    const nickname = prompt("ニックネームを入力してください");
+    if (nickname) {
+      await setDoc(docRef, { nickname });
+      return nickname;
+    } else {
+      return "名無し";
+    }
+  }
+}
+
+// スレッドの取得
+async function loadThreads() {
+  threadList.innerHTML = "";
+  const q = query(collection(db, "threads"), orderBy("createdAt", "desc"));
+  const querySnapshot = await getDocs(q);
+  querySnapshot.forEach((doc) => {
+    const data = doc.data();
+    const li = document.createElement("li");
+    li.textContent = `[${data.author}] ${data.title}`;
+    threadList.appendChild(li);
+  });
+}
+
+// ログイン状態の監視
 onAuthStateChanged(auth, async (user) => {
   if (user) {
-    // ニックネームをDBから読み込む
-    const nicknameRef = ref(db, `nicknames/${user.uid}`);
-    onValue(nicknameRef, (snapshot) => {
-      currentNickname = snapshot.val();
-      if (currentNickname) {
-        nicknameForm.style.display = "none";
-        status.textContent = `ようこそ ${currentNickname} さん（クリックでログアウト）`;
-      } else {
-        nicknameForm.style.display = "block";
-        status.textContent = `ニックネームを設定してください`;
-      }
-    });
-
-    loginBtn.style.display = "none";
+    const nickname = await getNickname(user.uid);
+    statusDiv.textContent = `ログイン中: ${nickname}`;
     threadForm.style.display = "flex";
+    loginBtn.style.display = "none";
     loadThreads();
   } else {
-    currentNickname = null;
-    status.textContent = "ログインしてください";
-    loginBtn.style.display = "inline-block";
+    statusDiv.textContent = "ログインしてください";
     threadForm.style.display = "none";
+    loginBtn.style.display = "block";
     threadList.innerHTML = "";
-    nicknameForm.style.display = "none";
   }
 });
 
-// ニックネーム保存
-saveNicknameBtn.addEventListener("click", async () => {
-  const nickname = nicknameInput.value.trim();
-  if (!nickname) return alert("ニックネームを入力してください");
-  const user = auth.currentUser;
-  if (!user) return alert("ログインしてください");
-
-  const nicknameRef = ref(db, `nicknames/${user.uid}`);
-  await set(nicknameRef, nickname);
-  nicknameInput.value = "";
-  nicknameForm.style.display = "none";
+// ログイン処理
+loginBtn.addEventListener("click", async () => {
+  try {
+    await signInWithPopup(auth, provider);
+  } catch (error) {
+    alert("ログイン失敗: " + error.message);
+  }
 });
 
-// スレッド作成時はcurrentNicknameを使う
+// ステータスクリックでログアウト
+statusDiv.addEventListener("click", () => {
+  signOut(auth);
+});
+
+// スレッド投稿処理
 threadForm.addEventListener("submit", async (e) => {
   e.preventDefault();
-  const title = threadTitleInput.value.trim();
-  if (!title) return;
-
   const user = auth.currentUser;
-  if (!user) return alert("ログインしてください");
-  if (!currentNickname) return alert("ニックネームを設定してください");
+  if (!user) return;
 
-  const threadId = generateRandomId();
-  const threadRef = ref(db, "threads/" + threadId);
+  const nickname = await getNickname(user.uid);
+  const title = threadTitleInput.value.trim();
+  if (title === "") return;
 
-  await set(threadRef, {
+  await addDoc(collection(db, "threads"), {
     title,
-    creatorUid: user.uid,
-    creatorName: currentNickname,
-    createdAt: new Date().toISOString(),
+    author: nickname,
+    createdAt: serverTimestamp(),
   });
 
   threadTitleInput.value = "";
+  loadThreads();
 });
