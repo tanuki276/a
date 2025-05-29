@@ -1,29 +1,20 @@
-// Firebase SDKの読み込み
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import {
-  getAuth,
-  signInWithPopup,
-  GoogleAuthProvider,
-  signOut,
-  onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
   getFirestore,
   collection,
   addDoc,
   getDocs,
-  setDoc,
-  doc,
-  getDoc,
-  serverTimestamp,
   query,
-  orderBy
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  orderBy,
+  serverTimestamp,
+  where,
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 // Firebase設定
 const firebaseConfig = {
   apiKey: "AIzaSyBIY3DFsKw2L0LB6MBLR_0f1NXOppCDta8",
   authDomain: "anitb-63dcb.firebaseapp.com",
+  databaseURL: "https://anitb-63dcb-default-rtdb.firebaseio.com",
   projectId: "anitb-63dcb",
   storageBucket: "anitb-63dcb.appspot.com",
   messagingSenderId: "196706725748",
@@ -33,112 +24,148 @@ const firebaseConfig = {
 
 // Firebase初期化
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
 const db = getFirestore(app);
-const provider = new GoogleAuthProvider();
 
 // DOM要素
-const loginBtn = document.getElementById("loginBtn");
-const statusDiv = document.getElementById("status");
-const threadForm = document.getElementById("threadForm");
-const threadTitleInput = document.getElementById("threadTitle");
-const threadList = document.getElementById("threadList");
+const threadListEl = document.getElementById("threadList");
+const searchThreadEl = document.getElementById("searchThread");
+const threadTitleEl = document.getElementById("threadTitle");
+const createThreadBtn = document.getElementById("createThreadBtn");
 
-// ステータス表示用関数
-function showStatus(msg) {
-  statusDiv.innerText = msg;
+const commentSection = document.getElementById("commentSection");
+const threadSection = document.getElementById("threadSection");
+const currentThreadTitleEl = document.getElementById("currentThreadTitle");
+const commentTextEl = document.getElementById("commentText");
+const postCommentBtn = document.getElementById("postCommentBtn");
+const backToThreadsBtn = document.getElementById("backToThreadsBtn");
+const commentListEl = document.getElementById("commentList");
+
+let currentThreadId = null;
+let allThreads = [];
+
+// ローカルストレージで投稿制限
+function canDoAction(key, intervalMs) {
+  const last = localStorage.getItem(key);
+  const now = Date.now();
+  if (!last || now - last >= intervalMs) {
+    localStorage.setItem(key, now);
+    return true;
+  }
+  return false;
 }
 
-// ニックネーム取得
-async function getNickname(uid) {
-  const docRef = doc(db, "users", uid);
-  const docSnap = await getDoc(docRef);
-  if (docSnap.exists()) {
-    return docSnap.data().nickname;
-  } else {
-    const nickname = prompt("ニックネームを入力してください");
-    if (nickname) {
-      await setDoc(docRef, { nickname });
-      return nickname;
-    } else {
-      return "名無し";
-    }
-  }
-}
+// スレッド一覧取得・表示
+async function loadThreads(filter = "") {
+  threadListEl.innerHTML = "";
+  const q = query(collection(db, "threads"), orderBy("created", "desc"));
+  const snapshot = await getDocs(q);
 
-// スレッドの取得
-async function loadThreads() {
-  threadList.innerHTML = "";
-  try {
-    const q = query(collection(db, "threads"), orderBy("createdAt", "desc"));
-    const querySnapshot = await getDocs(q);
-    querySnapshot.forEach((doc) => {
-      const data = doc.data();
-      const li = document.createElement("li");
-      li.textContent = `[${data.author}] ${data.title}`;
-      threadList.appendChild(li);
-    });
-  } catch (err) {
-    showStatus("スレッド読み込み失敗: " + err.message);
-  }
-}
+  allThreads = [];
+  snapshot.forEach(doc => {
+    allThreads.push({ id: doc.id, title: doc.data().title });
+  });
 
-// ログイン状態の監視
-onAuthStateChanged(auth, async (user) => {
-  if (user) {
-    const nickname = await getNickname(user.uid);
-    showStatus(`ログイン中: ${nickname}`);
-    threadForm.style.display = "flex";
-    loginBtn.style.display = "none";
-    loadThreads();
-  } else {
-    showStatus("ログインしてください");
-    threadForm.style.display = "none";
-    loginBtn.style.display = "block";
-    threadList.innerHTML = "";
-  }
-});
+  // フィルターで絞り込み
+  const filtered = allThreads.filter(t =>
+    t.title.toLowerCase().includes(filter.toLowerCase())
+  );
 
-// ログイン処理
-loginBtn.addEventListener("click", async () => {
-  try {
-    await signInWithPopup(auth, provider);
-  } catch (error) {
-    showStatus("ログイン失敗: " + error.message);
-  }
-});
-
-// ステータスクリックでログアウト
-statusDiv.addEventListener("click", () => {
-  signOut(auth);
-});
-
-// スレッド投稿処理
-threadForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const user = auth.currentUser;
-  if (!user) {
-    showStatus("ログインしていません");
+  if(filtered.length === 0){
+    threadListEl.innerHTML = "<li>該当スレがありません</li>";
     return;
   }
 
-  const nickname = await getNickname(user.uid);
-  const title = threadTitleInput.value.trim();
+  filtered.forEach(thread => {
+    const li = document.createElement("li");
+    li.textContent = thread.title;
+    li.dataset.id = thread.id;
+    li.addEventListener("click", () => openThread(thread.id, thread.title));
+    threadListEl.appendChild(li);
+  });
+}
+
+// スレ立て処理
+createThreadBtn.addEventListener("click", async () => {
+  if (!canDoAction("lastThread", 3600000)) {
+    alert("スレ立ては1時間に1回までです！");
+    return;
+  }
+  const title = threadTitleEl.value.trim();
   if (title === "") {
-    showStatus("スレッドタイトルを入力してください");
+    alert("タイトルを入力してください");
+    return;
+  }
+  await addDoc(collection(db, "threads"), {
+    title,
+    created: serverTimestamp(),
+  });
+  threadTitleEl.value = "";
+  alert("スレ立て成功！");
+  loadThreads();
+});
+
+// スレ検索
+searchThreadEl.addEventListener("input", e => {
+  loadThreads(e.target.value);
+});
+
+// スレ開く（コメント表示）
+async function openThread(threadId, threadTitle) {
+  currentThreadId = threadId;
+  currentThreadTitleEl.textContent = threadTitle;
+  threadSection.style.display = "none";
+  commentSection.style.display = "block";
+  commentTextEl.value = "";
+  await loadComments(threadId);
+}
+
+// コメント一覧取得・表示
+async function loadComments(threadId) {
+  commentListEl.innerHTML = "";
+  const q = query(
+    collection(db, `threads/${threadId}/comments`),
+    orderBy("created", "asc")
+  );
+  const snapshot = await getDocs(q);
+
+  if(snapshot.empty) {
+    commentListEl.innerHTML = "<li>コメントがまだありません</li>";
     return;
   }
 
-  try {
-    await addDoc(collection(db, "threads"), {
-      title,
-      author: nickname,
-      createdAt: serverTimestamp(),
-    });
-    threadTitleInput.value = "";
-    showStatus("スレッドを作成しました");
-    loadThreads();
-  } catch (err) {
-    showStatus("スレッド作成失敗: " + err.message);
+  snapshot.forEach(doc => {
+    const li = document.createElement("li");
+    li.textContent = doc.data().text;
+    commentListEl.appendChild(li);
+  });
+}
+
+// コメント投稿処理
+postCommentBtn.addEventListener("click", async () => {
+  if (!canDoAction("lastComment", 5000)) {
+    alert("コメントは5秒に1回までです！");
+    return;
   }
+  const text = commentTextEl.value.trim();
+  if (text === "") {
+    alert("コメントを入力してください");
+    return;
+  }
+  await addDoc(collection(db, `threads/${currentThreadId}/comments`), {
+    text,
+    created: serverTimestamp(),
+  });
+  commentTextEl.value = "";
+  loadComments(currentThreadId);
 });
+
+// スレ一覧に戻るボタン
+backToThreadsBtn.addEventListener("click", () => {
+  commentSection.style.display = "none";
+  threadSection.style.display = "block";
+  currentThreadId = null;
+  loadThreads();
+});
+
+// 初期読み込み
+loadThreads();
