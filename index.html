@@ -1,29 +1,26 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8">
   <title>さかな帝国.com</title>
-  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <h1>掲示板</h1>
+  <h1>匿名掲示板</h1>
 
-  <div id="status" title="クリックでログアウト">ログインしてください</div>
-  <button id="loginBtn">Googleでログイン</button>
+  <h2>スレ立て</h2>
+  <input type="text" id="threadTitle" placeholder="スレッドタイトル">
+  <button id="createThreadBtn">スレ立て</button>
 
-  <div id="nicknameForm" style="display:none;">
-    <input type="text" id="nicknameInput" placeholder="ニックネームを入力" required />
-    <button id="saveNicknameBtn">設定</button>
-  </div>
+  <h2>コメント投稿</h2>
+  <select id="threadList"></select><br>
+  <textarea id="commentText" placeholder="コメント"></textarea><br>
+  <button id="postCommentBtn">投稿</button>
 
-  <form id="threadForm" style="display:none;">
-    <input type="text" id="threadTitle" placeholder="スレッドタイトルを入力" required />
-    <button type="submit">スレッド立てる</button>
-  </form>
+  <h2>コメント一覧</h2>
+  <ul id="commentList"></ul>
 
-  <ul id="threadList"></ul>
-
-  <script type="module" src="app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
