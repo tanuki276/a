@@ -1,1 +1,71 @@
-<title></title>
+<!DOCTYPE html><html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>掲示板</title>
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+      import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
+      import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";// 環境変数（Viteでビルドした場合に読み込まれる）
+  const firebaseConfig = {
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID,
+    measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getDatabase(app);
+
+  const messagesRef = ref(db, "messages");
+
+  const form = document.getElementById("msgForm");
+  const list = document.getElementById("msgList");
+  const status = document.getElementById("status");
+
+  onAuthStateChanged(auth, user => {
+    if (user) {
+      status.textContent = "ログイン済み ✅";
+    } else {
+      status.textContent = "ログイン中...";
+    }
+  });
+
+  signInAnonymously(auth).catch(error => {
+    console.error("ログイン失敗:", error);
+  });
+
+  form.addEventListener("submit", e => {
+    e.preventDefault();
+    const msg = form.message.value.trim();
+    if (msg) {
+      push(messagesRef, {
+        text: msg,
+        time: new Date().toISOString()
+      });
+      form.message.value = "";
+    }
+  });
+
+  onChildAdded(messagesRef, data => {
+    const li = document.createElement("li");
+    li.textContent = data.val().text;
+    list.appendChild(li);
+  });
+</script>
+
+  </head>
+  <body>
+    <h1>🔥 安全なFirebase掲示板</h1>
+    <p id="status">ログイン中...</p>
+    <form id="msgForm">
+      <input type="text" name="message" required placeholder="メッセージを入力" />
+      <button type="submit">送信</button>
+    </form>
+    <ul id="msgList"></ul>
+  </body>
+</html>
