@@ -1,128 +1,55 @@
-<!DOCTYPE html><html lang="ja">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>さかな帝国</title>
-    <style>
-      body {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        background-color: #f4f4f4;
-        margin: 0;
-        padding: 20px;
-      }
-      h1 {
-        text-align: center;
-        color: #333;
-      }
-      form {
-        display: flex;
-        justify-content: center;
-        margin-bottom: 20px;
-      }
-      input[type="text"] {
-        padding: 10px;
-        font-size: 16px;
-        width: 60%;
-        border: 1px solid #ccc;
-        border-radius: 8px;
-      }
-      button {
-        padding: 10px 20px;
-        margin-left: 10px;
-        font-size: 16px;
-        background-color: #007BFF;
-        color: white;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-      }
-      button:hover {
-        background-color: #0056b3;
-      }
-      ul {
-        list-style: none;
-        padding: 0;
-        max-width: 600px;
-        margin: 0 auto;
-      }
-      li {
-        background: white;
-        padding: 12px;
-        margin-bottom: 10px;
-        border-radius: 8px;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-      }
-      #status {
-        text-align: center;
-        margin-bottom: 10px;
-        font-weight: bold;
-      }
-    </style>
-    <script type="module">
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
-      import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
-      import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
-      import DOMPurify from "https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.es.js";const firebaseConfig = {
-    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-    appId: import.meta.env.VITE_FIREBASE_APP_ID,
-    measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
-  };
-
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const db = getDatabase(app);
-
-  const messagesRef = ref(db, "messages");
-
-  const form = document.getElementById("msgForm");
-  const list = document.getElementById("msgList");
-  const status = document.getElementById("status");
-
-  onAuthStateChanged(auth, user => {
-    if (user) {
-      status.textContent = "✅ ログイン完了";
-    } else {
-      status.textContent = "⏳ ログイン中...";
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>さかな帝国</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f4f4f4;
+      margin: 0; padding: 20px;
     }
-  });
-
-  signInAnonymously(auth).catch(error => {
-    console.error("ログイン失敗:", error);
-    status.textContent = "❌ ログイン失敗";
-  });
-
-  form.addEventListener("submit", e => {
-    e.preventDefault();
-    const msg = form.message.value.trim();
-    if (msg) {
-      push(messagesRef, {
-        text: msg,
-        time: new Date().toISOString()
-      });
-      form.message.value = "";
+    #status {
+      margin-bottom: 20px;
+      font-weight: bold;
     }
-  });
+    button, input[type="text"] {
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+    button {
+      background-color: #007BFF;
+      color: white;
+      cursor: pointer;
+      border: none;
+      margin-left: 10px;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    form {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 30px;
+    }
+  </style>
+</head>
+<body>
+  <h1>掲示板</h1>
 
-  onChildAdded(messagesRef, data => {
-    const li = document.createElement("li");
-    // DOMPurifyを使用してXSS対策
-    li.innerHTML = DOMPurify.sanitize(data.val().text);
-    list.appendChild(li);
-  });
-</script>
+  <div id="status">ログインしてください</div>
+  <button id="loginBtn">Googleでログイン</button>
 
-  </head>
-  <body>
-    <h1>掲示板</h1>
-    <p id="status">ログイン中...</p>
-    <form id="msgForm">
-      <input type="text" name="message" required placeholder="メッセージを入力" />
-      <button type="submit">送信</button>
-    </form>
-    <ul id="msgList"></ul>
-  </body>
+  <form id="threadForm" style="display:none;">
+    <input type="text" id="threadTitle" placeholder="スレッドタイトルを入力" required />
+    <button type="submit">スレッド立てる</button>
+  </form>
+
+  <ul id="threadList"></ul>
+
+  <script type="module" src="./app.js"></script>
+</body>
 </html>
