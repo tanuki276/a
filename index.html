@@ -1,34 +1,34 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <title>さかな帝国.com</title>
-  <link rel="stylesheet" href="style.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>さかな帝国</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>匿名掲示板</h1>
+    <div class="container">
+        <h1>掲示板</h1>
 
-  <section id="threadSection">
-    <h2>スレ一覧</h2>
-    <input type="text" id="searchThread" placeholder="スレ検索" />
-    <ul id="threadList"></ul>
+        <div class="post-form">
+            <h2>スレッドを立てる</h2>
+            <input type="text" id="userName" placeholder="名前 (省略可)" maxlength="20">
+            <textarea id="postContent" placeholder="ここにスレッド内容を入力 (30文字以内)" rows="8" maxlength="30" required></textarea>
+            <button id="submitPost">書き込む</button>
+            <div id="postThrottleMessage" class="throttle-message"></div>
+        </div>
 
-    <h3>スレ立て</h3>
-    <input type="text" id="threadTitle" placeholder="スレッドタイトル" />
-    <button id="createThreadBtn">スレ立て</button>
-  </section>
+        <div id="postsContainer" class="posts-container">
+            <h2>スレッド一覧</h2>
+            <ol id="threadList" class="thread-list">
+                </ol>
+        </div>
+    </div>
 
-  <section id="commentSection" style="display:none;">
-    <h2>コメント投稿</h2>
-    <div id="currentThreadTitle"></div>
-    <textarea id="commentText" placeholder="コメント"></textarea><br />
-    <button id="postCommentBtn">コメント投稿</button>
-    <button id="backToThreadsBtn">スレ一覧に戻る</button>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-analytics-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
 
-    <h3>コメント一覧</h3>
-    <ul id="commentList"></ul>
-  </section>
-
-  <script type="module" src="app.js"></script>
+    <script src="app.js" type="module"></script>
 </body>
 </html>
