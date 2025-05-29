@@ -2,14 +2,31 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>404</title>
+  <title>Kouzo Invader</title>
+  <style>
+    canvas {
+      background: black;
+      display: block;
+      margin: auto;
+      border: 2px solid white;
+    }
+    body {
+      margin: 0;
+      background: #111;
+      color: white;
+      font-family: monospace;
+      text-align: center;
+    }
+  </style>
 </head>
 <body>
-  <pre>
-_
-| |
-|_|  under
-     observation...
-  </pre>
+  <h1>Kouzo Invader</h1>
+  <p>Score: <span id="score">0</span></p>
+  <canvas id="game" width="400" height="300"></canvas>
+
+  <audio id="shoot-sound" src="https://freesound.org/data/previews/66/66717_931655-lq.mp3"></audio>
+  <audio id="hit-sound" src="https://freesound.org/data/previews/174/174027_3242490-lq.mp3"></audio>
+
+  <script src="game.js"></script>
 </body>
 </html>
