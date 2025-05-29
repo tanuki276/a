@@ -2,12 +2,67 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>掲示板</title>
+    <title>さかな帝国</title>
+    <style>
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #f4f4f4;
+        margin: 0;
+        padding: 20px;
+      }
+      h1 {
+        text-align: center;
+        color: #333;
+      }
+      form {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 20px;
+      }
+      input[type="text"] {
+        padding: 10px;
+        font-size: 16px;
+        width: 60%;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+      }
+      button {
+        padding: 10px 20px;
+        margin-left: 10px;
+        font-size: 16px;
+        background-color: #007BFF;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+      }
+      button:hover {
+        background-color: #0056b3;
+      }
+      ul {
+        list-style: none;
+        padding: 0;
+        max-width: 600px;
+        margin: 0 auto;
+      }
+      li {
+        background: white;
+        padding: 12px;
+        margin-bottom: 10px;
+        border-radius: 8px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      }
+      #status {
+        text-align: center;
+        margin-bottom: 10px;
+        font-weight: bold;
+      }
+    </style>
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
       import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
-      import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";// 環境変数（Viteでビルドした場合に読み込まれる）
-  const firebaseConfig = {
+      import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
+      import DOMPurify from "https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.es.js";const firebaseConfig = {
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
     authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
     projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
@@ -29,14 +84,15 @@
 
   onAuthStateChanged(auth, user => {
     if (user) {
-      status.textContent = "ログイン済み ✅";
+      status.textContent = "✅ ログイン完了";
     } else {
-      status.textContent = "ログイン中...";
+      status.textContent = "⏳ ログイン中...";
     }
   });
 
   signInAnonymously(auth).catch(error => {
     console.error("ログイン失敗:", error);
+    status.textContent = "❌ ログイン失敗";
   });
 
   form.addEventListener("submit", e => {
@@ -53,7 +109,8 @@
 
   onChildAdded(messagesRef, data => {
     const li = document.createElement("li");
-    li.textContent = data.val().text;
+    // DOMPurifyを使用してXSS対策
+    li.innerHTML = DOMPurify.sanitize(data.val().text);
     list.appendChild(li);
   });
 </script>
