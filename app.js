@@ -1,7 +1,8 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
-import { getDatabase, ref, push, onValue, serverTimestamp, set, remove, child, get } from "firebase/database";
+// getDatabase, ref, push, onValue, serverTimestamp, set, remove, child, get
+import { getDatabase, ref, push, onValue, serverTimestamp, set, remove, get } from "firebase/database";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -17,8 +18,8 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
-const database = getDatabase(app);
+const analytics = getAnalytics(app); // Analyticsを使用する場合
+const database = getDatabase(app); // Realtime Databaseを使用
 
 // DOM要素の取得
 const userNameInput = document.getElementById('userName');
@@ -35,6 +36,7 @@ const LAST_THREAD_POST_TIME_KEY = 'lastThreadPostTime';
 const LAST_COMMENT_POST_TIME_KEY_PREFIX = 'lastCommentPostTime_';
 
 // --- 文字数制限設定 ---
+const MAX_USERNAME_LENGTH = 20; // ユーザー名の最大長を定義
 const MAX_THREAD_CONTENT_LENGTH = 30;
 const MAX_COMMENT_CONTENT_LENGTH = 100;
 
@@ -43,14 +45,29 @@ function generateDeleteKey() {
     return Math.random().toString(36).substring(2, 8); // 6桁の英数字
 }
 
-function updateThrottleMessage(lastPostTime, interval, messageElement) {
+/**
+ * 投稿・コメントのスロットルメッセージを更新し、投稿可能かどうかを返す
+ * @param {number|null} lastPostTime - 最終投稿時刻 (Date.now()形式)
+ * @param {number} interval - 制限間隔 (ミリ秒)
+ * @param {HTMLElement} messageElement - メッセージを表示するDOM要素
+ * @param {HTMLButtonElement|null} buttonElement - 制御するボタン要素 (オプション)
+ * @returns {boolean} 投稿可能であれば true, 制限中であれば false
+ */
+function updateThrottleStatus(lastPostTime, interval, messageElement, buttonElement = null) {
     const now = Date.now();
     if (lastPostTime && (now - lastPostTime < interval)) {
         const remainingTime = Math.ceil((interval - (now - lastPostTime)) / 1000);
-        messageElement.textContent = `次の投稿まであと ${remainingTime} 秒お待ちください。`;
+        const unit = interval === THREAD_POST_INTERVAL_MS ? "スレッド作成" : "コメント投稿";
+        messageElement.textContent = `${unit}はあと ${remainingTime} 秒お待ちください。`;
+        if (buttonElement) {
+            buttonElement.disabled = true;
+        }
         return false; // 制限中
     } else {
         messageElement.textContent = '';
+        if (buttonElement) {
+            buttonElement.disabled = false;
+        }
         return true; // 投稿可能
     }
 }
@@ -58,26 +75,30 @@ function updateThrottleMessage(lastPostTime, interval, messageElement) {
 // --- スレッド投稿機能 ---
 submitPostButton.addEventListener('click', async () => {
     const lastThreadPostTime = localStorage.getItem(LAST_THREAD_POST_TIME_KEY);
-    const canPost = updateThrottleMessage(lastThreadPostTime, THREAD_POST_INTERVAL_MS, postThrottleMessage);
+    const canPost = updateThrottleStatus(lastThreadPostTime, THREAD_POST_INTERVAL_MS, postThrottleMessage, submitPostButton);
 
     if (!canPost) {
-        alert("スレッド作成は1時間に1回までです。しばらくお待ちください。");
+        // アラートはupdateThrottleStatus内でメッセージ表示されるので不要
         return;
     }
 
     const userName = userNameInput.value.trim() || "名無しさん";
-    let postContent = postContentInput.value.trim();
+    const postContent = postContentInput.value.trim();
 
+    // クライアント側でのバリデーションを強化
     if (!postContent) {
         alert("スレッド内容を入力してください。");
         return;
     }
-
-    // スレッド内容の文字数チェック
     if (postContent.length > MAX_THREAD_CONTENT_LENGTH) {
         alert(`スレッド内容は${MAX_THREAD_CONTENT_LENGTH}文字以内で入力してください。\n現在の文字数: ${postContent.length}`);
         return;
     }
+    if (userName.length > MAX_USERNAME_LENGTH) {
+        alert(`名前は${MAX_USERNAME_LENGTH}文字以内で入力してください。\n現在の文字数: ${userName.length}`);
+        return;
+    }
+
 
     const deleteKey = generateDeleteKey(); // 削除キーを生成
 
@@ -93,23 +114,37 @@ submitPostButton.addEventListener('click', async () => {
         localStorage.setItem(LAST_THREAD_POST_TIME_KEY, Date.now()); // 最終投稿時刻を更新
 
         alert(`スレッドを作成しました！\n\n削除キー: ${deleteKey}\n\nこのキーは紛失すると復元できません。大切に保管してください。`);
-        userNameInput.value = '';
-        postContentInput.value = '';
-        updateThrottleMessage(Date.now(), THREAD_POST_INTERVAL_MS, postThrottleMessage); // メッセージ更新
+        // userNameInput.value = ''; // 名前はクリアしない（2ch風）
+        postContentInput.value = ''; // 投稿内容をクリア
+        // ボタンの状態とメッセージを即座に更新
+        updateThrottleStatus(Date.now(), THREAD_POST_INTERVAL_MS, postThrottleMessage, submitPostButton);
     } catch (error) {
         console.error("スレッド作成中にエラーが発生しました:", error);
-        alert("スレッド作成に失敗しました。もう一度お試しください。");
+        // Firebaseからのエラーメッセージを解析して表示
+        let errorMessage = "スレッド作成に失敗しました。";
+        if (error.code === 'PERMISSION_DENIED') {
+            errorMessage += "データベースのルールにより拒否されました。（文字数オーバーなど）";
+        } else if (error.message.includes('Network Error')) {
+            errorMessage += "ネットワーク接続を確認してください。";
+        }
+        alert(errorMessage + " もう一度お試しください。");
     }
 });
 
 // スレッド投稿制限の表示を定期的に更新
 setInterval(() => {
     const lastThreadPostTime = localStorage.getItem(LAST_THREAD_POST_TIME_KEY);
-    updateThrottleMessage(lastThreadPostTime, THREAD_POST_INTERVAL_MS, postThrottleMessage);
+    updateThrottleStatus(lastThreadPostTime, THREAD_POST_INTERVAL_MS, postThrottleMessage, submitPostButton);
 }, 1000); // 1秒ごとに更新
+
 
 // --- スレッドのリアルタイム表示とコメント機能 ---
 onValue(ref(database, 'threads'), (snapshot) => {
+    if (!snapshot.exists()) {
+        threadList.innerHTML = '<p>まだスレッドがありません。最初のスレッドを立ててみましょう！</p>';
+        return;
+    }
+
     threadList.innerHTML = ''; // 既存のスレッドをクリア
     const threads = [];
     snapshot.forEach((childSnapshot) => {
@@ -162,7 +197,12 @@ onValue(ref(database, 'threads'), (snapshot) => {
     });
 }, (error) => {
     console.error("スレッドの読み込み中にエラーが発生しました:", error);
-    threadList.innerHTML = '<p>スレッドの読み込み中にエラーが発生しました。</p>';
+    // ネットワークエラーの場合などにメッセージを表示
+    let errorMessage = "スレッドの読み込み中にエラーが発生しました。";
+    if (error.message.includes('Network Error')) {
+        errorMessage += "ネットワーク接続を確認してください。";
+    }
+    threadList.innerHTML = `<p>${errorMessage}</p>`;
 });
 
 
@@ -170,10 +210,10 @@ onValue(ref(database, 'threads'), (snapshot) => {
 async function fetchComments(threadId) {
     const commentsList = document.getElementById(`comments-list-${threadId}`);
     if (!commentsList) return;
-    commentsList.innerHTML = ''; // 既存のコメントをクリア
-
+    
+    // コメントはリアルタイムで自動更新されるため、onValueで直接リスナーを設定
     onValue(ref(database, `threads/${threadId}/comments`), (snapshot) => {
-        commentsList.innerHTML = ''; // リアルタイム更新のために再度クリア
+        commentsList.innerHTML = ''; // リアルタイム更新のために毎回クリア
         const comments = [];
         snapshot.forEach((childSnapshot) => {
             const comment = childSnapshot.val();
@@ -184,50 +224,58 @@ async function fetchComments(threadId) {
         // コメントは古い順に表示（2ch風）
         comments.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
 
-        comments.forEach((comment) => {
-            const commentElement = document.createElement('li');
-            commentElement.classList.add('comment-item');
-            const date = comment.timestamp ? new Date(comment.timestamp).toLocaleString() : 'N/A';
-            commentElement.innerHTML = `
-                <strong>${comment.user}</strong> <span class="comment-time">(${date})</span>: ${comment.content}
-                <button class="delete-comment-button" data-thread-id="${threadId}" data-comment-id="${comment.id}">削除</button>
-            `;
-            commentsList.appendChild(commentElement);
+        if (comments.length === 0) {
+            commentsList.innerHTML = '<li class="comment-item" style="text-align: center; color: #999;">まだコメントはありません。</li>';
+        } else {
+            comments.forEach((comment) => {
+                const commentElement = document.createElement('li');
+                commentElement.classList.add('comment-item');
+                const date = comment.timestamp ? new Date(comment.timestamp).toLocaleString() : 'N/A';
+                commentElement.innerHTML = `
+                    <strong>${comment.user}</strong> <span class="comment-time">(${date})</span>: ${comment.content}
+                    <button class="delete-comment-button" data-thread-id="${threadId}" data-comment-id="${comment.id}">削除</button>
+                `;
+                commentsList.appendChild(commentElement);
 
-            // コメント削除ボタンのイベントリスナー
-            commentElement.querySelector('.delete-comment-button').addEventListener('click', () => showDeletePrompt(threadId, 'comment', comment.id));
-        });
+                // コメント削除ボタンのイベントリスナー
+                commentElement.querySelector('.delete-comment-button').addEventListener('click', () => showDeletePrompt(threadId, 'comment', comment.id));
+            });
+        }
     }, (error) => {
         console.error(`コメントの読み込み中にエラーが発生しました (スレッドID: ${threadId}):`, error);
-        commentsList.innerHTML = '<p>コメントの読み込み中にエラーが発生しました。</p>';
+        commentsList.innerHTML = '<p style="color: red;">コメントの読み込み中にエラーが発生しました。</p>';
     });
 }
 
 async function addComment(threadId, event) {
     const commentInput = event.target.previousElementSibling;
+    const addCommentButton = event.target; // コメントボタン自体
     const commentThrottleMessage = document.getElementById(`commentThrottleMessage-${threadId}`);
     
     const lastCommentPostTime = sessionStorage.getItem(LAST_COMMENT_POST_TIME_KEY_PREFIX + threadId);
-    const canPost = updateThrottleMessage(lastCommentPostTime, COMMENT_POST_INTERVAL_MS, commentThrottleMessage);
+    const canPost = updateThrottleStatus(lastCommentPostTime, COMMENT_POST_INTERVAL_MS, commentThrottleMessage, addCommentButton);
 
     if (!canPost) {
-        alert("コメントは5秒に1回までです。しばらくお待ちください。");
         return;
     }
 
     const userName = userNameInput.value.trim() || "名無しさん"; // スレッド投稿時の名前を使い回す
-    let content = commentInput.value.trim();
+    const content = commentInput.value.trim();
 
+    // クライアント側でのバリデーションを強化
     if (!content) {
         alert("コメント内容を入力してください。");
         return;
     }
-
-    // コメント内容の文字数チェック
     if (content.length > MAX_COMMENT_CONTENT_LENGTH) {
         alert(`コメント内容は${MAX_COMMENT_CONTENT_LENGTH}文字以内で入力してください。\n現在の文字数: ${content.length}`);
         return;
     }
+    if (userName.length > MAX_USERNAME_LENGTH) {
+        alert(`名前は${MAX_USERNAME_LENGTH}文字以内で入力してください。\n現在の文字数: ${userName.length}`);
+        return;
+    }
+
 
     try {
         await push(ref(database, `threads/${threadId}/comments`), {
@@ -237,10 +285,17 @@ async function addComment(threadId, event) {
         });
         sessionStorage.setItem(LAST_COMMENT_POST_TIME_KEY_PREFIX + threadId, Date.now()); // 最終投稿時刻を更新
         commentInput.value = '';
-        updateThrottleMessage(Date.now(), COMMENT_POST_INTERVAL_MS, commentThrottleMessage); // メッセージ更新
+        // ボタンの状態とメッセージを即座に更新
+        updateThrottleStatus(Date.now(), COMMENT_POST_INTERVAL_MS, commentThrottleMessage, addCommentButton);
     } catch (error) {
         console.error("コメント追加中にエラーが発生しました:", error);
-        alert("コメントの追加に失敗しました。");
+        let errorMessage = "コメントの追加に失敗しました。";
+        if (error.code === 'PERMISSION_DENIED') {
+            errorMessage += "データベースのルールにより拒否されました。（文字数オーバーなど）";
+        } else if (error.message.includes('Network Error')) {
+            errorMessage += "ネットワーク接続を確認してください。";
+        }
+        alert(errorMessage + " もう一度お試しください。");
     }
 }
 
@@ -250,8 +305,9 @@ setInterval(() => {
         const threadId = input.dataset.threadId;
         const lastCommentPostTime = sessionStorage.getItem(LAST_COMMENT_POST_TIME_KEY_PREFIX + threadId);
         const commentThrottleMessage = document.getElementById(`commentThrottleMessage-${threadId}`);
-        if (commentThrottleMessage) {
-            updateThrottleMessage(lastCommentPostTime, COMMENT_POST_INTERVAL_MS, commentThrottleMessage);
+        const addCommentButton = input.nextElementSibling; // inputの次の要素がボタン
+        if (commentThrottleMessage && addCommentButton) {
+            updateThrottleStatus(lastCommentPostTime, COMMENT_POST_INTERVAL_MS, commentThrottleMessage, addCommentButton);
         }
     });
 }, 1000); // 1秒ごとに更新
@@ -260,46 +316,54 @@ setInterval(() => {
 // --- 削除機能 ---
 async function showDeletePrompt(id, type, commentId = null) {
     let targetPath;
+    let dataRef;
     if (type === 'thread') {
         targetPath = `threads/${id}`;
+        dataRef = ref(database, targetPath);
     } else if (type === 'comment') {
         targetPath = `threads/${id}/comments/${commentId}`;
+        dataRef = ref(database, targetPath);
     } else {
+        console.error("無効な削除タイプです:", type);
         return;
     }
 
     const enteredKey = prompt("削除キーを入力してください:");
-    if (enteredKey === null) { // キャンセルされた場合
+    if (enteredKey === null || enteredKey.trim() === '') { // キャンセルまたは空入力の場合
         return;
     }
 
     try {
-        const snapshot = await get(child(ref(database), targetPath));
+        const snapshot = await get(dataRef);
         if (snapshot.exists()) {
             const data = snapshot.val();
             
             if (type === 'thread') {
                 if (data.deleteKey === enteredKey) {
                     if (confirm('本当にこのスレッドを削除しますか？\n（コメントも全て削除されます）')) {
-                        await remove(ref(database, targetPath));
+                        await remove(dataRef);
                         alert("スレッドを削除しました。");
                     }
                 } else {
                     alert("削除キーが異なります。");
                 }
             } else if (type === 'comment') {
-                 // コメントは削除キーを持たないため、警告して削除を実行
+                 // コメントにはdeleteKeyがないため、単に確認メッセージを出す
                  // 本来はコメントにもキーを持たせるか、スレッドの削除キーでコメントも一括削除する設計が望ましい
                  if (confirm('本当にこのコメントを削除しますか？（コメントに削除キーはありません）')) {
-                     await remove(ref(database, targetPath));
+                     await remove(dataRef);
                      alert("コメントを削除しました。");
                  }
             }
         } else {
-            alert("対象の投稿が見つかりません。");
+            alert("対象の投稿が見つかりません。すでに削除されている可能性があります。");
         }
     } catch (error) {
         console.error("削除中にエラーが発生しました:", error);
-        alert("削除に失敗しました。");
+        let errorMessage = "削除に失敗しました。";
+        if (error.message.includes('Network Error')) {
+            errorMessage += "ネットワーク接続を確認してください。";
+        }
+        alert(errorMessage + " もう一度お試しください。");
     }
 }
