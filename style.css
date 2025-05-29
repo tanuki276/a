@@ -86,7 +86,8 @@ h2 {
 /* スロットルメッセージ */
 .throttle-message {
     color: #d9534f; /* 赤色 */
-    font-size: 0.85rem;
+    font-weight: bold; /* 太字に */
+    font-size: 0.9rem; /* 少し大きく */
     margin-top: 5px;
     text-align: right;
 }
@@ -161,6 +162,12 @@ h2 {
     margin-bottom: 20px;
     padding-left: 0;
     list-style: none;
+    max-height: 200px; /* コメントリストの最大高さ */
+    overflow-y: auto; /* 溢れたらスクロールバー */
+    border: 1px solid #eee; /* 枠線 */
+    border-radius: 4px;
+    background-color: #fafafa;
+    padding-right: 5px; /* スクロールバーとの兼ね合い */
 }
 
 .comment-item {
@@ -171,6 +178,11 @@ h2 {
     font-size: 0.85rem;
     color: #555;
     line-height: 1.5;
+    border-bottom: 1px solid #e0e0e0; /* コメント間の区切り線 */
+}
+.comment-item:last-child {
+    margin-bottom: 0; /* 最後のコメントの下マージンなし */
+    border-bottom: none;
 }
 
 .comment-item strong {
@@ -213,7 +225,8 @@ h2 {
 
 .comment-throttle-message {
     color: #d9534f;
-    font-size: 0.75rem;
+    font-weight: bold;
+    font-size: 0.8rem;
     margin-top: 5px;
     text-align: right;
 }
@@ -242,7 +255,7 @@ h2 {
     border-radius: 4px;
     font-size: 0.9rem;
     width: 150px;
-    display: block; /* 削除ボタンの上に配置 */
+    display: block;
 }
 
 .delete-section {
