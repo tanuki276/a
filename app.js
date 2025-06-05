@@ -193,3 +193,30 @@ async function deletePost(id, type, enteredKey, commentId = null) {
         return { success: false, message: errorMessage };
     }
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+  const submitBtn = document.getElementById('submitPost');
+  const userNameInput = document.getElementById('userName');
+  const postContentInput = document.getElementById('postContent');
+  const throttleMessage = document.getElementById('postThrottleMessage');
+
+  submitBtn.addEventListener('click', async () => {
+    throttleMessage.textContent = '';
+
+    const userName = userNameInput.value;
+    const postContent = postContentInput.value;
+
+    const result = await submitPost(userName, postContent);
+
+    if (result.success) {
+      throttleMessage.style.color = 'green';
+      throttleMessage.textContent = result.message;
+      userNameInput.value = '';
+      postContentInput.value = '';
+      // ここでスレッド再読み込み関数があれば呼ぶ
+    } else {
+      throttleMessage.style.color = 'red';
+      throttleMessage.textContent = result.message;
+    }
+  });
+});
